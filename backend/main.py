@@ -35,7 +35,7 @@ async def log_requests(request: Request, call_next):
 # CORS config allowing frontend access
 # Default to allow all for convenience, but can be locked down via env
 origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
-
+origins.append("https://vibe-sync-mauve.vercel.app")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -92,4 +92,5 @@ async def analyze_endpoint(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
