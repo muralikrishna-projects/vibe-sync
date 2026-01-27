@@ -134,6 +134,41 @@ The backend will start at `http://localhost:8000`.
 
 ---
 
+## 🐳 Docker Deployment
+
+Run the entire stack with a single command:
+
+
+
+
+
+### 🐳 Docker Deployment
+
+Run the entire stack with a single command:
+
+```bash
+docker-compose up --build
+```
+
+
+```bash
+docker-compose up --build
+```
+
+- **Frontend**: http://localhost:3000
+- **Backend**: http://localhost:8000
+
+> **Note on Custom Key Configuration**:
+> The `NEXT_PUBLIC_API_URL` is baked into the frontend at **build time**.
+> If you are deploying to a production server (not localhost), you must build with the correct URL:
+> ```bash
+> docker build --build-arg NEXT_PUBLIC_API_URL=https://api.yourdomain.com -t vibe-sync .
+> ```
+
+
+
+---
+
 ## © Credits
 
 Created by **A. Murali Krishna**  

@@ -1,0 +1,33 @@
+
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8000
+    container_name: vibesync-frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      # In this setup, browser accesses frontend at localhost:3000
+      # Browser ALSO accesses backend at localhost:8000
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vibesync-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+    volumes:
+      - ./backend/main.py:/app/main.py
+      - ./backend/analysis.py:/app/analysis.py
