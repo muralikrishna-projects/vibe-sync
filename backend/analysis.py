@@ -21,9 +21,9 @@ def sync_audio(y_ref, y_user, sr):
         return y_ref
 
     # 1. Extract Chroma Features (Energy distribution across 12 pitch classes)
-    # Hop length 512 is standard.
-    chroma_ref = librosa.feature.chroma_cqt(y=y_ref, sr=sr, hop_length=512)
-    chroma_user = librosa.feature.chroma_cqt(y=y_user, sr=sr, hop_length=512)
+    # Hop length 512 is standard. Optimized: Use chroma_stft instead of chroma_cqt for massive memory savings.
+    chroma_ref = librosa.feature.chroma_stft(y=y_ref, sr=sr, hop_length=512)
+    chroma_user = librosa.feature.chroma_stft(y=y_user, sr=sr, hop_length=512)
 
     # 2. Cross-Correlate to find time offset
     # Optimized: Cross-correlate the average chroma energy profiles
@@ -94,25 +94,26 @@ def analyze_audio_files(ref_path: str, user_path: str):
     Analyzes two audio files for Spectral Fidelity and Intonation Accuracy.
     """
     try:
+        import gc
         # Load Audio Files
         # Optimize: Reduce SR to 16kHz (Standard for speech/singing analysis)
+        # Prevent OOM: Strictly limit duration to 45s for 512MB RAM instances
         print("Loading audio files...", flush=True)
-        y_ref_full, sr_ref = librosa.load(ref_path, sr=16000)
-        y_user, sr_user = librosa.load(user_path, sr=16000)
+        y_ref_full, sr_ref = librosa.load(ref_path, sr=16000, duration=45.0)
+        y_user, sr_user = librosa.load(user_path, sr=16000, duration=45.0)
 
         # ---------------------------
         # Pre-processing: Source Separation
         # ---------------------------
-        # User requested separating vocals from music/beats.
-        # We use Harmonic-Percussive Source Separation (HPSS) to remove the beats (percussive).
-        # This keeps the vocals and melodic instruments (harmonic).
+        # Process sequentially and GC immediately to save memory footprint
         print("Separating Vocals/Harmonics from Reference Beats...", flush=True)
-        y_ref_harmonic, y_ref_percussive = librosa.effects.hpss(y_ref_full)
-        y_user_harmonic, y_user_percussive = librosa.effects.hpss(y_user)
+        y_ref, _ = librosa.effects.hpss(y_ref_full)
+        del y_ref_full
+        gc.collect()
         
-        # Use only the harmonic component for comparison (removes drums/noise)
-        y_ref = y_ref_harmonic
-        y_user = y_user_harmonic
+        print("Separating Vocals/Harmonics from User Beats...", flush=True)
+        y_user, _ = librosa.effects.hpss(y_user)
+        gc.collect()
 
         # ---------------------------
         # 0. Sync / Alignment
@@ -122,6 +123,8 @@ def analyze_audio_files(ref_path: str, user_path: str):
         y_ref_aligned = sync_audio(y_ref, y_user, sr_ref)
         y_ref = y_ref_aligned # Replace with aligned version
         print(f"Aligned Lengths: Ref={len(y_ref)}, User={len(y_user)}", flush=True)
+        del y_ref_aligned
+        gc.collect()
 
         # ---------------------------
         # 1. Dynamics Match (Replaces Spectral Fidelity)
