@@ -2,6 +2,7 @@ import librosa
 import numpy as np
 from scipy.spatial.distance import cosine
 from scipy.signal import correlate
+from scipy.stats import pearsonr
 from fastdtw import fastdtw
 import warnings
 import traceback
@@ -144,8 +145,16 @@ def analyze_audio_files(ref_path: str, user_path: str):
         dist_rms, path_rms = fastdtw(rms_ref, rms_user, dist=lambda x, y: abs(x - y))
         norm_dist_rms = dist_rms / len(path_rms)
         
-        # Score: 0 dist -> 100, 0.2 dist -> 80% (Strictness moderate)
-        dynamics_score = 100 * np.exp(-2.0 * norm_dist_rms)
+        # Pearson Correlation for Structural Dynamics (Strictness)
+        # Extracts aligned sequences dynamically from path
+        aligned_rms_ref = np.array([rms_ref[i] for i, j in path_rms])
+        aligned_rms_user = np.array([rms_user[j] for i, j in path_rms])
+        # Add tiny epsilon to avoid constant-array division by zero warnings
+        corr_rms, _ = pearsonr(aligned_rms_ref + 1e-10, aligned_rms_user + 1e-10)
+        
+        # Base Score from structural distance bounded by Pearson structural similarity scaling
+        base_dynamics_score = 100 * np.exp(-2.0 * norm_dist_rms)
+        dynamics_score = base_dynamics_score * max(0.0, float(corr_rms))
 
         # ---------------------------
         # 2. Intonation Accuracy (Strict) & Rhythm Precision
@@ -158,6 +167,13 @@ def analyze_audio_files(ref_path: str, user_path: str):
 
         f0_ref = np.nan_to_num(f0_ref)
         f0_user = np.nan_to_num(f0_user)
+        
+        # Voice Activity Gating: Pure noise hallucinates ~0-5% pitched frames whereas singing is 40-70%+
+        ref_voiced_frames = np.sum(f0_ref > 0)
+        user_voiced_frames = np.sum(f0_user > 0)
+        voice_ratio = user_voiced_frames / max(1, ref_voiced_frames)
+        # Cap ratio at 1.0 (sometimes user sings more off-time, which is fine)
+        voice_confidence = min(1.0, float(voice_ratio))
 
         def normalize_pitch(f0):
             non_zero = f0[f0 > 0]
@@ -179,7 +195,10 @@ def analyze_audio_files(ref_path: str, user_path: str):
 
         # Intonation Score: STRICTER (Decay 0.5 -> 3.0)
         # Small deviations should be penalized heavily now.
-        intonation_score = 100 * np.exp(-3.0 * normalized_distance)
+        base_intonation_score = 100 * np.exp(-3.0 * normalized_distance)
+        
+        # Punish hallucinated alignment for predominantly unvoiced (noise) inputs (square confidence)
+        intonation_score = base_intonation_score * (voice_confidence ** 2)
 
         # ---------------------------
         # 3. Rhythm Precision (New)
@@ -209,9 +228,14 @@ def analyze_audio_files(ref_path: str, user_path: str):
         # Strictness: High
         rhythm_score = 100 * np.exp(-5.0 * mean_deviation)
 
+        # Rhythm Gating: Punishes algorithm alignment metrics if time-shifting (rhythm) was totally unstable/warped (like for noise)
+        rhythm_gate = rhythm_score / 100.0
+        gated_dynamics = dynamics_score * rhythm_gate
+        gated_intonation = intonation_score * rhythm_gate
+
         # Paranoid casting
-        d_score = float(dynamics_score)
-        i_score = float(intonation_score)
+        d_score = float(gated_dynamics)
+        i_score = float(gated_intonation)
         r_score = float(rhythm_score)
         
         if np.isnan(d_score): d_score = 0.0
