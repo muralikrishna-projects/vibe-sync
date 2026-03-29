@@ -128,33 +128,35 @@ def analyze_audio_files(ref_path: str, user_path: str):
         gc.collect()
 
         # ---------------------------
-        # 1. Dynamics Match (Replaces Spectral Fidelity)
+        # 1. Timbre Sequence Match (MFCCs replace RMS)
         # ---------------------------
-        print("Calculating Dynamics...", flush=True)
-        # Measure volume/energy envelope matching
-        # Optimize: Increase hop_length for faster computation
-        rms_ref = librosa.feature.rms(y=y_ref, hop_length=1024)[0]
-        rms_user = librosa.feature.rms(y=y_user, hop_length=1024)[0]
+        print("Calculating MFCC Timbre Sequence...", flush=True)
+        # Extract 13 MFCCs which represent the "DNA" of the vocal tract (ignoring primary pitch)
+        mfcc_ref = librosa.feature.mfcc(y=y_ref, sr=16000, n_mfcc=13, hop_length=1024)
+        mfcc_user = librosa.feature.mfcc(y=y_user, sr=16000, n_mfcc=13, hop_length=1024)
         
-        # Normalize RMS (0 to 1)
-        if np.max(rms_ref) > 0: rms_ref /= np.max(rms_ref)
-        if np.max(rms_user) > 0: rms_user /= np.max(rms_user)
+        # Normalize MFCCs to standard zero-mean, unit-variance across time
+        mfcc_ref = (mfcc_ref - np.mean(mfcc_ref, axis=1, keepdims=True)) / (np.std(mfcc_ref, axis=1, keepdims=True) + 1e-8)
+        mfcc_user = (mfcc_user - np.mean(mfcc_user, axis=1, keepdims=True)) / (np.std(mfcc_user, axis=1, keepdims=True) + 1e-8)
         
-        # Align RMS curves using DTW
-        print("Running DTW for Dynamics...", flush=True)
-        dist_rms, path_rms = fastdtw(rms_ref, rms_user, dist=lambda x, y: abs(x - y))
-        norm_dist_rms = dist_rms / len(path_rms)
+        # Align MFCC matrices using DTW
+        print("Running DTW for Timbre...", flush=True)
+        # We use Cosine Distance for multidimensional vectors like MFCCs
+        dist_mfcc, path_mfcc = fastdtw(mfcc_ref.T, mfcc_user.T, dist=cosine)
+        norm_dist_mfcc = dist_mfcc / len(path_mfcc)
         
-        # Pearson Correlation for Structural Dynamics (Strictness)
-        # Extracts aligned sequences dynamically from path
-        aligned_rms_ref = np.array([rms_ref[i] for i, j in path_rms])
-        aligned_rms_user = np.array([rms_user[j] for i, j in path_rms])
-        # Add tiny epsilon to avoid constant-array division by zero warnings
-        corr_rms, _ = pearsonr(aligned_rms_ref + 1e-10, aligned_rms_user + 1e-10)
+        # Pearson Correlation check along the 1st MFCC coefficient (approximate energy/texture contour) to hard-gate noise
+        mfcc0_ref_aligned = np.array([mfcc_ref[0, i] for i, j in path_mfcc])
+        mfcc0_user_aligned = np.array([mfcc_user[0, j] for i, j in path_mfcc])
+        corr_mfcc0, _ = pearsonr(mfcc0_ref_aligned + 1e-10, mfcc0_user_aligned + 1e-10)
         
-        # Base Score from structural distance bounded by Pearson structural similarity scaling
-        base_dynamics_score = 100 * np.exp(-2.0 * norm_dist_rms)
-        dynamics_score = base_dynamics_score * max(0.0, float(corr_rms))
+        # If absolute correlation is weak (< 0.3), they are singing something *completely* different (or it's noise)
+        structural_correlation_gate = max(0.0, float(corr_mfcc0)) if float(corr_mfcc0) > 0.2 else 0.0
+
+        # Base Score -> Cosine distance ranges [0, 2] typically. Low distance = High Similarity.
+        # e^(-2 * distance) scales nicely
+        base_timbre_score = 100 * np.exp(-2.0 * norm_dist_mfcc)
+        timbre_score = base_timbre_score * structural_correlation_gate
 
         # ---------------------------
         # 2. Intonation Accuracy (Strict) & Rhythm Precision
@@ -232,28 +234,28 @@ def analyze_audio_files(ref_path: str, user_path: str):
         rhythm_gate = rhythm_score / 100.0
         
         # Hard Noise Gate: voice_confidence evaluates absolute ratio of sang pitch frames vs expected.
-        # Square the confidence to create a terminal drop-off curve for pure noise/silence
+        # If the structure correlates less than 0.2, score zeroes out. If voice ratio drops, it zeroes out.
         noise_penalty = voice_confidence ** 2
 
-        gated_dynamics = dynamics_score * rhythm_gate * noise_penalty
-        gated_intonation = intonation_score * rhythm_gate  # Intonation originally included noise_penalty
-        gated_rhythm = rhythm_score * noise_penalty
+        gated_timbre = timbre_score * rhythm_gate * noise_penalty
+        gated_intonation = intonation_score * rhythm_gate
+        gated_rhythm = rhythm_score * noise_penalty * structural_correlation_gate
 
         # Paranoid casting
-        d_score = float(gated_dynamics)
+        t_score = float(gated_timbre)
         i_score = float(gated_intonation)
         r_score = float(gated_rhythm)
         
-        if np.isnan(d_score): d_score = 0.0
+        if np.isnan(t_score): t_score = 0.0
         if np.isnan(i_score): i_score = 0.0
         if np.isnan(r_score): r_score = 0.0
         
         # Update return keys to match what frontend expects (based on previous reverted changes)
-        # Frontend expects: rhythm_precision, dynamics_match, intonation_accuracy
+        # Frontend expects: rhythm_precision, timbre_similarity, pitch_accuracy
         results = {
-            "rhythm_precision": round(r_score, 2), # Replaces Phonetic
-            "dynamics_match": round(d_score, 2),   # Replaces Spectral
-            "intonation_accuracy": round(i_score, 2)
+            "rhythmic_alignment": round(r_score, 2),
+            "timbre_similarity": round(t_score, 2),
+            "pitch_accuracy": round(i_score, 2)
         }
         print(f"Analysis Complete: {results}", flush=True)
         return results

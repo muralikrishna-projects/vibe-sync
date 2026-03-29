@@ -9,15 +9,15 @@ interface AudioState {
     transcriptUser: string
     // New Metrics
     rhythmPrecision: number
-    dynamicsMatch: number
-    intonationAccuracy: number
+    timbreSimilarity: number
+    pitchAccuracy: number
     errorMessage: string | null
     status: 'idle' | 'recording' | 'analyzing' | 'completed' | 'error'
 
     setReferenceFile: (file: File | null) => void
     setRecordedBlob: (blob: Blob | null) => void
     setIsRecording: (isRecording: boolean) => void
-    setAnalysisResults: (rhythm: number, dynamics: number, intonation: number) => void
+    setAnalysisResults: (rhythm: number, timbre: number, pitch: number) => void
     setTranscripts: (ref: string, user: string) => void
     setStatus: (status: AudioState['status']) => void
     setError: (error: string) => void
@@ -33,18 +33,18 @@ export const useAudioStore = create<AudioState>((set) => ({
     transcriptReference: '',
     transcriptUser: '',
     rhythmPrecision: 0,
-    dynamicsMatch: 0,
-    intonationAccuracy: 0,
+    timbreSimilarity: 0,
+    pitchAccuracy: 0,
     errorMessage: null,
     status: 'idle',
 
     setReferenceFile: (file) => set({ referenceFile: file }),
     setRecordedBlob: (blob) => set({ recordedBlob: blob }),
     setIsRecording: (isRecording) => set({ isRecording, status: isRecording ? 'recording' : 'idle' }),
-    setAnalysisResults: (rhythm, dynamics, intonation) => set({
+    setAnalysisResults: (rhythm, timbre, pitch) => set({
         rhythmPrecision: rhythm,
-        dynamicsMatch: dynamics,
-        intonationAccuracy: intonation
+        timbreSimilarity: timbre,
+        pitchAccuracy: pitch
     }),
     setTranscripts: (ref, user) => set({ transcriptReference: ref, transcriptUser: user }),
     setStatus: (status) => set({ status, isAnalyzing: status === 'analyzing', errorMessage: status !== 'error' ? null : undefined }), // Clear error if not error status
@@ -55,8 +55,8 @@ export const useAudioStore = create<AudioState>((set) => ({
         isAnalyzing: false,
         transcriptUser: '',
         rhythmPrecision: 0,
-        dynamicsMatch: 0,
-        intonationAccuracy: 0,
+        timbreSimilarity: 0,
+        pitchAccuracy: 0,
         errorMessage: null,
         status: 'idle'
     }),
@@ -68,8 +68,8 @@ export const useAudioStore = create<AudioState>((set) => ({
         transcriptReference: '',
         transcriptUser: '',
         rhythmPrecision: 0,
-        dynamicsMatch: 0,
-        intonationAccuracy: 0,
+        timbreSimilarity: 0,
+        pitchAccuracy: 0,
         errorMessage: null,
         status: 'idle'
     })

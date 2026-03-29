@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { FileUpload } from "@/components/feature/FileUpload"
 import { UserAudioInput } from "@/components/feature/UserAudioInput"
 import { ComparisonDashboard } from "@/components/feature/ComparisonDashboard"
+import { AudioVisualizer } from "@/components/feature/AudioVisualizer"
 import { useAudioStore } from "@/store/useAudioStore"
 import { analyzeAudio } from "@/lib/audio-analysis"
 import { AnimatePresence, motion } from "framer-motion"
@@ -27,8 +28,8 @@ export default function Home() {
     setStatus('analyzing')
 
     try {
-      const { rhythm, dynamics, intonation } = await analyzeAudio(referenceFile, userAudio)
-      setAnalysisResults(rhythm, dynamics, intonation)
+      const { rhythm, timbre, pitch } = await analyzeAudio(referenceFile, userAudio)
+      setAnalysisResults(rhythm, timbre, pitch)
       setStatus('completed')
     } catch (error) {
       console.error(error)
@@ -97,6 +98,16 @@ export default function Home() {
 
           {/* Step 3: Results */}
           <ComparisonDashboard />
+          {status === 'completed' && (
+              <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="w-full"
+              >
+                  <AudioVisualizer />
+              </motion.div>
+          )}
         </div>
       </main>
 

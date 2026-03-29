@@ -13,7 +13,7 @@ function bufferToWavBlob(buffer: AudioBuffer): Blob {
 }
 
 // Main Analysis Function
-export async function analyzeAudio(referenceBlob: File | null, userBlob: Blob | null): Promise<{ rhythm: number, dynamics: number, intonation: number }> {
+export async function analyzeAudio(referenceBlob: File | null, userBlob: Blob | null): Promise<{ rhythm: number, timbre: number, pitch: number }> {
     if (!referenceBlob || !userBlob) throw new Error("Missing audio files")
 
     // 1. Convert inputs to uniform WAV format on the client side
@@ -57,9 +57,9 @@ export async function analyzeAudio(referenceBlob: File | null, userBlob: Blob | 
         }
 
         return {
-            rhythm: data.rhythm_precision,
-            dynamics: data.dynamics_match,
-            intonation: data.intonation_accuracy
+            rhythm: data.rhythmic_alignment,
+            timbre: data.timbre_similarity,
+            pitch: data.pitch_accuracy
         }
 
     } catch (e) {

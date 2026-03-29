@@ -24,6 +24,7 @@
     "react-dropzone": "^14.2.3",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
+    "wavesurfer.js": "^7.12.5",
     "zustand": "^4.4.6"
   },
   "devDependencies": {

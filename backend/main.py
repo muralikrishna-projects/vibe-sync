@@ -79,9 +79,9 @@ async def analyze_endpoint(
 
         # Return Results
         return {
-            "rhythm_precision": results["rhythm_precision"],
-            "dynamics_match": results["dynamics_match"],
-            "intonation_accuracy": results["intonation_accuracy"]
+            "rhythmic_alignment": results["rhythmic_alignment"],
+            "timbre_similarity": results["timbre_similarity"],
+            "pitch_accuracy": results["pitch_accuracy"]
         }
 
     except Exception as e:

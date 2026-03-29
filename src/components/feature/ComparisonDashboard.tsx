@@ -49,8 +49,8 @@ function ProgressRing({ score, label, colorClass }: { score: number; label: stri
 export function ComparisonDashboard() {
     const {
         rhythmPrecision,
-        dynamicsMatch,
-        intonationAccuracy,
+        timbreSimilarity,
+        pitchAccuracy,
         status,
         errorMessage
     } = useAudioStore()
@@ -73,14 +73,14 @@ export function ComparisonDashboard() {
     return (
         <div className="w-full max-w-4xl mx-auto mt-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
-                <ProgressRing score={rhythmPrecision} label="Rhythm Precision" colorClass="text-emerald-400" />
-                <ProgressRing score={dynamicsMatch} label="Dynamics Match" colorClass="text-indigo-400" />
-                <ProgressRing score={intonationAccuracy} label="Intonation Accuracy" colorClass="text-purple-400" />
+                <ProgressRing score={rhythmPrecision} label="Rhythmic Alignment" colorClass="text-emerald-400" />
+                <ProgressRing score={timbreSimilarity} label="Timbre Similarity" colorClass="text-indigo-400" />
+                <ProgressRing score={pitchAccuracy} label="Pitch Accuracy" colorClass="text-purple-400" />
             </div>
 
             <div className="mt-8 text-center text-muted-foreground text-sm max-w-2xl mx-auto">
                 <p>
-                    {dynamicsMatch > 80 && intonationAccuracy > 80
+                    {timbreSimilarity > 80 && pitchAccuracy > 80
                         ? "Outstanding! Your vocal timbre and pitch perfectly match the reference."
                         : "Keep practicing. Focus on matching the exact pitch curves and tone color of the original."}
                 </p>
