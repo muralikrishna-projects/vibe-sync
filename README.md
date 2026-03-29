@@ -65,7 +65,7 @@
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/vibe-sync.git
+git clone https://github.com/muralikrishna-projects/vibe-sync.git
 cd vibe-sync
 ```
 
