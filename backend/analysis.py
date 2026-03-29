@@ -228,15 +228,21 @@ def analyze_audio_files(ref_path: str, user_path: str):
         # Strictness: High
         rhythm_score = 100 * np.exp(-5.0 * mean_deviation)
 
-        # Rhythm Gating: Punishes algorithm alignment metrics if time-shifting (rhythm) was totally unstable/warped (like for noise)
+        # Rhythm Gating: Punishes algorithm alignment metrics if time-shifting (rhythm) was totally unstable/warped
         rhythm_gate = rhythm_score / 100.0
-        gated_dynamics = dynamics_score * rhythm_gate
-        gated_intonation = intonation_score * rhythm_gate
+        
+        # Hard Noise Gate: voice_confidence evaluates absolute ratio of sang pitch frames vs expected.
+        # Square the confidence to create a terminal drop-off curve for pure noise/silence
+        noise_penalty = voice_confidence ** 2
+
+        gated_dynamics = dynamics_score * rhythm_gate * noise_penalty
+        gated_intonation = intonation_score * rhythm_gate  # Intonation originally included noise_penalty
+        gated_rhythm = rhythm_score * noise_penalty
 
         # Paranoid casting
         d_score = float(gated_dynamics)
         i_score = float(gated_intonation)
-        r_score = float(rhythm_score)
+        r_score = float(gated_rhythm)
         
         if np.isnan(d_score): d_score = 0.0
         if np.isnan(i_score): i_score = 0.0
