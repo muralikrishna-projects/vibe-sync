@@ -138,19 +138,6 @@ The backend will start at `http://localhost:8000`.
 
 Run the entire stack with a single command:
 
-
-
-
-
-### 🐳 Docker Deployment
-
-Run the entire stack with a single command:
-
-```bash
-docker-compose up --build
-```
-
-
 ```bash
 docker-compose up --build
 ```
